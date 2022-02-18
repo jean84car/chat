@@ -1,0 +1,82 @@
+<!doctype html>
+<html>
+<head>
+    <title>WhatsApp</title>
+    <script src="jquery.js"></script>
+    <script src="sockjs.min.js"></script>
+    <script src="stomp.min.js"></script>
+</head>
+<body onload="disconnect()">
+<noscript>
+    <h2 style="color: #ff0000;">WhatsApp</h2>
+</noscript>
+<div>
+    <label for="group">Grupo id:</label>
+    <input type="text" id="group" placeholder="group id"/>
+</div>
+<div>
+    <button id="connect" onclick="connect();">Conectar</button>
+    <button id="disconnect" onclick="disconnect();" disabled="disabled">Desconectar</button>
+</div>
+<div id="conversationDiv">
+    <label for="phone">Telefono:</label>
+    <input type="text" id="phone" placeholder="telefono"/>
+	<label for="message">Mensaje:</label>
+    <input type="text" id="message" placeholder="mensaje"/>
+    <button id="sendMessage" onclick="sendMessage();">Enviar</button>
+    <p id="response"></p>
+</div>
+<script type="text/javascript">
+    var stompClient = null;
+    var groupId = null;
+
+    function setConnected(connected) {
+        conn = $('#connect');
+        disconn = $('#disconnect');
+        if (connected) {
+            conn.attr('disabled', 'true');
+            disconn.removeAttr('disabled');
+        } else {
+            conn.removeAttr('disabled');
+            disconn.attr('disabled', 'true');
+        }
+        document.getElementById('conversationDiv').style.visibility = connected ? 'visible' : 'hidden';
+        $('#response').html();
+    }
+
+    function connect() {
+        var socket = new SockJS("http://localhost:8283/chat");
+        groupId = $('#group').val();
+        stompClient = Stomp.over(socket);
+        stompClient.connect({}, function (frame) {
+            setConnected(true);
+            console.log('Connected: ' + frame);
+            stompClient.subscribe('/g/' + groupId, function (response) {
+                showResponse(JSON.parse(response.body).contenido);
+            });
+        });
+    }
+
+    function disconnect() {
+        if (stompClient != null) {
+            stompClient.disconnect();
+        }
+        setConnected(false);
+        console.log('Disconnected');
+    }
+
+    function sendMessage() {
+		console.log($('#group').val());
+		groupId = $('#group').val();
+        var telefono = $('#phone').val();
+		var mensaje = $('#message').val();
+        stompClient.send('/group/' + groupId, {}, JSON.stringify({'mensaje': mensaje, 'telefono': telefono}));
+    }
+
+    function showResponse(message) {
+		var response = $('#response');
+        response.html(message);
+    }
+</script>
+</body>
+</html>
